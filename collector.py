@@ -3,9 +3,11 @@ import datetime
 import myfitnesspal
 import logging
 import os
-from prometheus_client.core import GaugeMetricFamily, REGISTRY, CounterMetricFamily
+import sys
+from prometheus_client.core import Gauge, GaugeMetricFamily, REGISTRY, CounterMetricFamily
 from prometheus_client import start_http_server
 
+VERSION = "1.0.1"
 
 class MyFitnesspalCollector(object):
     def __init__(self, username, password):
@@ -58,6 +60,9 @@ class MyFitnesspalCollector(object):
         up = GaugeMetricFamily("myfitnesspal_up", 'Help text', labels=['instance', 'user'])
         up.add_metric(['myfitnesspal', self.username], 1 if self._connected else 0)
         yield up
+        build_info = GaugeMetricFamily('myfitnesspal_build_info', 'Build information', labels=['python_version', 'version'])
+        build_info.add_metric(['.'.join([str(sys.version_info.major), str(sys.version_info.minor)]), VERSION], 1)
+        yield build_info
         if self._connected:
             calories = GaugeMetricFamily("myfitnesspal_nutrition_joules_total", 'Help text', labels=['user'])
             calories.add_metric([self.username], totals.get("calories", 0) * 4.187 * 1000)
@@ -117,7 +122,7 @@ if __name__ == '__main__':
     )
     logging.captureWarnings(True)
 
-    start_http_server(int(os.environ.get("MYFITNESSPAL_EXPORTER_PORT", "8000")))
+    start_http_server(int(os.environ.get("MYFITNESSPAL_EXPORTER_PORT", "9681")))
     REGISTRY.register(MyFitnesspalCollector(os.environ["MYFITNESSPAL_USERNAME"], os.environ["MYFITNESSPAL_PASSWORD"]))
     while True:
         time.sleep(1)
